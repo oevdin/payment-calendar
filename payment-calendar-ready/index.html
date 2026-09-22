@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Платёжный календарь · UnicaDigital</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ЭКРАН НАСТРОЙКИ (пока не заполнен firebase-config.js) -->
+  <div id="setup-screen" class="hidden">
+    <div class="login-card" style="max-width:480px;">
+      <h1>Нужна ещё одна настройка</h1>
+      <p style="font-size:13.5px;color:var(--text-muted);line-height:1.6;margin:0 0 6px;">
+        Чтобы данные синхронизировались между устройствами, приложению нужна бесплатная база данных Firebase.
+        Заполните файл <b>js/firebase-config.js</b> данными вашего проекта — подробная пошаговая инструкция есть в <b>README.txt</b>, раздел «Настройка Firebase».
+      </p>
+      <p style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">После этого обновите страницу.</p>
+    </div>
+  </div>
+
+  <!-- ЭКРАН ВХОДА -->
+  <div id="login-screen" class="hidden">
+    <form class="login-card" id="login-form" autocomplete="off">
+      <h1>Платёжный календарь</h1>
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Пароль</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="btn btn-primary btn-block">Войти</button>
+      <button type="button" class="btn btn-ghost btn-block btn-sm" id="btn-forgot" style="margin-top:8px;">Забыли пароль?</button>
+    </form>
+  </div>
+
+  <!-- ПРИЛОЖЕНИЕ -->
+  <div id="app" class="hidden">
+    <button type="button" class="sidebar-burger" id="btn-sidebar-open" title="Меню">☰</button>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand-title">Платёжный&nbsp;календарь</div>
+        <button type="button" class="sidebar-close" id="btn-sidebar-close" title="Закрыть">✕</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Режим периода</div>
+        <div class="segmented" id="mode-toggle">
+          <button type="button" class="seg-btn active" data-mode="month">Месяц</button>
+          <button type="button" class="seg-btn" data-mode="week">Неделя</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section" id="month-controls">
+        <div class="sidebar-label">Период</div>
+        <div class="period-row">
+          <button type="button" id="btn-prev-month" title="Предыдущий месяц">‹</button>
+          <select id="select-month"></select>
+          <button type="button" id="btn-next-month" title="Следующий месяц">›</button>
+        </div>
+        <select id="select-year"></select>
+      </div>
+
+      <div class="sidebar-section hidden" id="week-controls">
+        <div class="sidebar-label">Неделя</div>
+        <div class="period-row">
+          <button type="button" id="btn-prev-week" title="Предыдущая неделя">‹</button>
+          <div class="week-label" id="week-label">—</div>
+          <button type="button" id="btn-next-week" title="Следующая неделя">›</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Фильтр</div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="filter-unpaid">
+          Только неоплаченные
+        </label>
+      </div>
+
+      <div class="sidebar-section" id="sidebar-admin">
+        <div class="sidebar-label">Управление</div>
+        <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-contragents">Контрагенты</button>
+        <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-users">Пользователи</button>
+        <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-backup">Резервная копия</button>
+      </div>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-footer">
+        <button type="button" class="btn btn-sm btn-icon" id="btn-theme-toggle" title="Включить светлую тему">☀️</button>
+        <div class="user-box">
+          <span id="user-name"></span>
+          <span class="role-badge" id="user-role"></span>
+        </div>
+        <button type="button" class="btn btn-sm btn-ghost btn-block" id="btn-logout">Выход</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="overdue-banner hidden" id="overdue-banner">
+        <div class="overdue-banner-inner" id="overdue-banner-inner"></div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="card accent">
+          <div class="label" id="label-total">Начислено за месяц</div>
+          <div class="value" id="sum-total">0</div>
+        </div>
+        <div class="card paid">
+          <div class="label" id="label-paid">Оплачено за месяц</div>
+          <div class="value" id="sum-paid">0</div>
+        </div>
+        <div class="card unpaid">
+          <div class="label" id="label-unpaid">К оплате за месяц</div>
+          <div class="value" id="sum-unpaid">0</div>
+        </div>
+        <div class="card">
+          <div class="label">Не оплачено всего (все периоды)</div>
+          <div class="value" id="sum-unpaid-total">0</div>
+        </div>
+      </div>
+
+      <div class="table-section">
+        <div class="table-wrap">
+          <table class="calendar" id="calendar-table">
+            <colgroup id="table-colgroup"></colgroup>
+            <thead><tr id="table-head-row"></tr></thead>
+            <tbody id="table-body"></tbody>
+            <tfoot><tr id="table-foot-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <footer class="site-footer">
+        <div class="footer-brand">
+          <span class="made">Разработано и автоматизировано —</span>
+          <img src="assets/logo.png" alt="UnicaDigital">
+        </div>
+        <div>Данные синхронизируются в реальном времени на всех устройствах через облачную базу данных.</div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: платёж в ячейке -->
+  <div class="modal-overlay" id="modal-cell">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="cell-modal-title">Платёж</h2>
+          <p id="cell-modal-sub"></p>
+        </div>
+        <button class="modal-close" data-close="modal-cell">✕</button>
+      </div>
+      <div id="cell-payments-list"></div>
+      <div id="cell-add-form-wrap">
+        <hr class="divider">
+        <div class="field">
+          <label>Сумма</label>
+          <input type="number" id="cell-add-amount" min="0" step="0.01" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Комментарий (необязательно)</label>
+          <input type="text" id="cell-add-note" placeholder="Например: счёт №123">
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="cell-add-paid">
+          Отметить оплаченным сразу
+        </label>
+        <button type="button" class="btn btn-primary btn-block" id="btn-cell-add">Добавить платёж</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: контрагенты -->
+  <div class="modal-overlay" id="modal-contragents">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <div>
+          <h2>Контрагенты</h2>
+          <p>Добавление, переименование и удаление контрагентов (столбцов календаря)</p>
+        </div>
+        <button class="modal-close" data-close="modal-contragents">✕</button>
+      </div>
+      <div class="inline-form">
+        <input type="text" id="new-contragent-name" placeholder="Название контрагента">
+        <button type="button" class="btn btn-primary" id="btn-add-contragent">Добавить</button>
+      </div>
+      <div id="contragents-list"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: пользователи -->
+  <div class="modal-overlay" id="modal-users">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <div>
+          <h2>Пользователи</h2>
+          <p>Новый доступ, сброс пароля по email, отзыв доступа</p>
+        </div>
+        <button class="modal-close" data-close="modal-users">✕</button>
+      </div>
+      <div class="inline-form">
+        <input type="text" id="new-user-name" placeholder="Имя">
+        <input type="email" id="new-user-login" placeholder="Email">
+        <input type="password" id="new-user-password" placeholder="Временный пароль">
+        <select id="new-user-role">
+          <option value="viewer">Просмотр</option>
+          <option value="admin">Админ</option>
+        </select>
+        <button type="button" class="btn btn-primary" id="btn-add-user">Добавить</button>
+      </div>
+      <div id="users-list"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: резервная копия -->
+  <div class="modal-overlay" id="modal-backup">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2>Резервная копия данных</h2>
+          <p>Экспорт текущих данных в файл, импорт старой копии в общую базу</p>
+        </div>
+        <button class="modal-close" data-close="modal-backup">✕</button>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="btn-export">⬇ Скачать копию (JSON)</button>
+      <hr class="divider">
+      <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px;">Загрузить данные из ранее сохранённого файла (они добавятся в общую базу, ничего не удаляя):</p>
+      <button type="button" class="btn btn-block file-input-btn">
+        ⬆ Загрузить файл резервной копии
+        <input type="file" id="input-import" accept="application/json">
+      </button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Firebase (облачная база данных и вход) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
