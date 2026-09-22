@@ -704,7 +704,6 @@
     if (isAdmin()) {
       document.getElementById('btn-contragents').onclick = () => { renderContragentsList(); openModal('modal-contragents'); closeSidebar(); };
       document.getElementById('btn-users').onclick = () => { renderUsersList(); openModal('modal-users'); closeSidebar(); };
-      document.getElementById('btn-backup').onclick = () => { openModal('modal-backup'); closeSidebar(); };
       document.getElementById('btn-add-contragent').onclick = addContragentRow;
       document.getElementById('new-contragent-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') addContragentRow(); });
       document.getElementById('btn-add-user').onclick = addUserRow;
