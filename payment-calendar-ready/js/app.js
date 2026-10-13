@@ -56,6 +56,37 @@
   function openModal(id) { document.getElementById(id).classList.add('open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
   function isAdmin() { return state.user && state.user.role === 'admin'; }
+  function roleLabel(r) { return r === 'admin' ? 'Админ' : r === 'manager' ? 'Менеджер' : 'Просмотр'; }
+
+  // ---------- разделы: календарь / поставки ----------
+  const VIEW_KEY = 'pk_view';
+  function getSavedView() { try { return localStorage.getItem(VIEW_KEY) || 'calendar'; } catch (e) { return 'calendar'; } }
+  function setView(view) {
+    if (view !== 'orders') view = 'calendar';
+    try { localStorage.setItem(VIEW_KEY, view); } catch (e) {}
+    document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
+    document.getElementById('view-orders').classList.toggle('hidden', view !== 'orders');
+    document.querySelectorAll('.cal-only').forEach((el) => {
+      if (el.id === 'month-controls') el.classList.toggle('hidden', view !== 'calendar' || state.viewMode !== 'month');
+      else if (el.id === 'week-controls') el.classList.toggle('hidden', view !== 'calendar' || state.viewMode !== 'week');
+      else el.classList.toggle('hidden', view !== 'calendar');
+    });
+    document.querySelectorAll('#nav-views .nav-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === view));
+    if (view === 'orders' && window.Orders) window.Orders.render();
+  }
+
+  // мост для модуля «Поставки» (js/orders.js)
+  window.PCApp = {
+    getUser: () => state.user,
+    isAdmin: () => isAdmin(),
+    isManager: () => !!(state.user && state.user.role === 'manager'),
+    toast: (m, t) => toast(m, t),
+    esc: (s) => esc(s),
+    errText: (e) => authErrorMessage(e),
+    todayStr: () => todayStr(),
+    currency: () => state.settingsDoc.currency || '',
+    contragentNames: () => state.contragents.map((c) => c.name),
+  };
 
   function authErrorMessage(err) {
     const map = {
@@ -164,18 +195,21 @@
 
     document.getElementById('user-name').textContent = state.user.displayName;
     const roleEl = document.getElementById('user-role');
-    roleEl.textContent = isAdmin() ? 'Админ' : 'Просмотр';
-    roleEl.className = 'role-badge' + (isAdmin() ? ' admin' : '');
+    roleEl.textContent = roleLabel(state.user.role);
+    roleEl.className = 'role-badge' + (isAdmin() ? ' admin' : state.user.role === 'manager' ? ' manager' : '');
     document.getElementById('sidebar-admin').style.display = isAdmin() ? 'block' : 'none';
 
     buildPeriodSelectors();
     bindGlobalEvents();
     startWatchers();
+    if (window.Orders) window.Orders.mount();
+    setView(getSavedView());
   }
 
   function teardownWatchers() {
     Object.keys(state.unsub).forEach((k) => { if (state.unsub[k]) { state.unsub[k](); state.unsub[k] = null; } });
     state.seeded = false;
+    if (window.Orders) window.Orders.unmount();
   }
 
   function startWatchers() {
@@ -261,8 +295,9 @@
     document.querySelectorAll('#mode-toggle .seg-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
     });
-    document.getElementById('month-controls').classList.toggle('hidden', mode !== 'month');
-    document.getElementById('week-controls').classList.toggle('hidden', mode !== 'week');
+    const onCal = !document.getElementById('view-calendar').classList.contains('hidden');
+    document.getElementById('month-controls').classList.toggle('hidden', !onCal || mode !== 'month');
+    document.getElementById('week-controls').classList.toggle('hidden', !onCal || mode !== 'week');
     renderAll();
   }
 
@@ -798,7 +833,7 @@
     wrap.innerHTML = state.users.map((u) => `
       <div class="list-row">
         <div class="grow">
-          <div class="name">${esc(u.displayName || u.email)} <span class="meta">${u.role === 'admin' ? '· Админ' : '· Просмотр'}</span></div>
+          <div class="name">${esc(u.displayName || u.email)} <span class="meta">· ${roleLabel(u.role)}</span></div>
           <div class="meta">${esc(u.email)}</div>
         </div>
         <div class="row-btns">
@@ -875,6 +910,14 @@
     });
 
     document.getElementById('btn-theme-toggle').onclick = toggleTheme;
+
+    document.querySelectorAll('#nav-views .nav-btn').forEach((b) => {
+      b.onclick = () => {
+        setView(b.getAttribute('data-view'));
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-backdrop').classList.remove('open');
+      };
+    });
 
     // боковая панель на телефоне
     const sidebar = document.getElementById('sidebar');

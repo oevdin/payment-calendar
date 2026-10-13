@@ -76,6 +76,10 @@ service cloud.firestore {
       return isMember() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+    function isManager() {
+      return isMember() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
 
     match /users/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
@@ -92,6 +96,14 @@ service cloud.firestore {
     match /settings/{doc} {
       allow read: if isMember();
       allow write: if isAdmin();
+    }
+    match /orders/{doc} {
+      allow read: if isMember();
+      allow create: if isAdmin() ||
+        (isManager() && request.resource.data.payments.size() == 0);
+      allow update: if isAdmin() ||
+        (isManager() && request.resource.data.payments == resource.data.payments);
+      allow delete: if isAdmin();
     }
   }
 }
@@ -154,6 +166,39 @@ service cloud.firestore {
   формально остаётся (просто без прав) — если нужно удалить её
   полностью, это делается вручную: Firebase Console → Authentication
   → находите пользователя → «Delete user».
+
+
+ЧАСТЬ 2А. РАЗДЕЛ «ПОСТАВКИ» (заказы поставщикам)
+===================================================
+В левом меню два раздела: «Платёжный календарь» и «Поставки».
+Вход, пользователи и база общие, но данные поставок хранятся
+отдельно (коллекция orders) и в календарь НЕ попадают.
+
+• Заказ: поставщик, менеджер, счёт, дата, официальная стоимость
+  (безнал) и фактическая стоимость. Нал = фактическая − официальная,
+  считается сам. Плюс срок оплаты, дата отгрузки, статус.
+• Оплаты: кнопка «Оплата» у заказа — безнал или нал, дата, сумма.
+  Можно платить частями. Нажатие на строку показывает историю оплат.
+• Остатки, статус оплаты (Не оплачен / Частично / Просрочен /
+  Оплачен / Переплата), сводка сверху и долг по поставщикам
+  считаются автоматически. Есть выгрузка в Excel (CSV).
+• Кнопка «Загрузить 13 старых заказов ПРОЭКСПОРТ» видна только
+  админу и только пока раздел пустой — нажать один раз.
+
+Роли:
+• Админ — всё: заказы, оплаты, удаление, календарь, пользователи.
+• Менеджер — создаёт и правит заказы, но НЕ отмечает оплаты и
+  не удаляет. Календарь видит только для просмотра.
+• Просмотр — только смотрит.
+Роль выбирается при добавлении пользователя («Пользователи»).
+
+ВАЖНО при обновлении: в Firebase Console → Firestore Database →
+Rules замените правила на новый текст из Шага 5 (там добавлены
+isManager и блок orders) и нажмите «Publish». Без этого раздел
+«Поставки» покажет ошибку доступа.
+
+Чтобы сделать существующего сотрудника менеджером: Firestore
+Database → Data → users → его документ → поле role → manager.
 
 
 ЧАСТЬ 3. РАЗМЕЩЕНИЕ НА GITHUB PAGES (или любом другом хостинге)

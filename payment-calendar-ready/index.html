@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Платёжный календарь · UnicaDigital</title>
+<title>Платёжный календарь и поставки · UnicaDigital</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -50,6 +50,14 @@
       </div>
 
       <div class="sidebar-section">
+        <div class="sidebar-label">Раздел</div>
+        <div class="nav-list" id="nav-views">
+          <button type="button" class="nav-btn active" data-view="calendar">📅 Платёжный календарь</button>
+          <button type="button" class="nav-btn" data-view="orders">📦 Поставки</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section cal-only">
         <div class="sidebar-label">Режим периода</div>
         <div class="segmented" id="mode-toggle">
           <button type="button" class="seg-btn active" data-mode="month">Месяц</button>
@@ -57,7 +65,7 @@
         </div>
       </div>
 
-      <div class="sidebar-section" id="month-controls">
+      <div class="sidebar-section cal-only" id="month-controls">
         <div class="sidebar-label">Период</div>
         <div class="period-row">
           <button type="button" id="btn-prev-month" title="Предыдущий месяц">‹</button>
@@ -67,7 +75,7 @@
         <select id="select-year"></select>
       </div>
 
-      <div class="sidebar-section hidden" id="week-controls">
+      <div class="sidebar-section hidden cal-only" id="week-controls">
         <div class="sidebar-label">Неделя</div>
         <div class="period-row">
           <button type="button" id="btn-prev-week" title="Предыдущая неделя">‹</button>
@@ -76,7 +84,7 @@
         </div>
       </div>
 
-      <div class="sidebar-section">
+      <div class="sidebar-section cal-only">
         <div class="sidebar-label">Фильтр</div>
         <label class="checkbox-row">
           <input type="checkbox" id="filter-unpaid">
@@ -107,6 +115,7 @@
     </aside>
 
     <div class="main-content">
+     <div id="view-calendar">
       <div class="overdue-banner hidden" id="overdue-banner">
         <div class="overdue-banner-inner" id="overdue-banner-inner"></div>
       </div>
@@ -140,6 +149,64 @@
           </table>
         </div>
       </div>
+     </div>
+
+     <!-- РАЗДЕЛ: ПОСТАВКИ (заказы поставщикам) -->
+     <div id="view-orders" class="hidden">
+      <div class="orders-head">
+        <div>
+          <h1 class="orders-title">Поставки</h1>
+          <div class="orders-sub">Безнал = официальная стоимость · нал = фактическая минус официальная</div>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-order-new">+ Новый заказ</button>
+      </div>
+
+      <div class="summary-cards orders-cards" id="orders-cards"></div>
+
+      <div class="orders-filters">
+        <input type="text" id="of-search" placeholder="Поиск: поставщик, счёт, менеджер, № заказа">
+        <select id="of-supplier"></select>
+        <select id="of-status">
+          <option value="">Все статусы заказа</option>
+          <option>Новый</option><option>В процессе</option><option>Отгружен</option><option>Оприходован</option><option>Завершён</option>
+        </select>
+        <select id="of-pay">
+          <option value="">Все по оплате</option>
+          <option value="debt">Есть остаток</option>
+          <option value="overdue">Просрочено</option>
+          <option value="paid">Оплачено полностью</option>
+          <option value="over">Переплата</option>
+        </select>
+      </div>
+
+      <div class="table-section orders-section">
+        <div class="table-wrap">
+          <table class="orders-table">
+            <thead><tr>
+              <th>№ / поставщик</th><th>Счёт / дата</th>
+              <th class="n">Официальная</th><th class="n">Фактическая</th>
+              <th class="n">Безнал оплачено</th><th class="n">Нал оплачено</th>
+              <th class="n">Остаток безнал</th><th class="n">Остаток нал</th><th class="n">Итого к оплате</th>
+              <th>Срок оплаты</th><th>Статус</th><th></th>
+            </tr></thead>
+            <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+        <div class="orders-hint">Остаток больше нуля — нужно доплатить, меньше нуля — переплата. Нажмите на строку, чтобы увидеть историю платежей.</div>
+
+        <h2 class="orders-h2">Долг по поставщикам</h2>
+        <div class="table-wrap">
+          <table class="orders-table orders-table-sm">
+            <thead><tr><th>Поставщик</th><th class="n">Заказов</th><th class="n">Сумма заказов (факт)</th><th class="n">Оплачено</th><th class="n">Остаток безнал</th><th class="n">Остаток нал</th><th class="n">Итого долг</th></tr></thead>
+            <tbody id="orders-sup-body"></tbody>
+          </table>
+        </div>
+        <div class="orders-tools">
+          <button type="button" class="btn btn-sm" id="btn-orders-csv">Скачать в Excel (CSV)</button>
+          <button type="button" class="btn btn-sm hidden" id="btn-orders-import">Загрузить 13 старых заказов ПРОЭКСПОРТ</button>
+        </div>
+      </div>
+     </div>
 
       <footer class="site-footer">
         <div class="footer-brand">
@@ -217,11 +284,65 @@
         <input type="password" id="new-user-password" placeholder="Временный пароль">
         <select id="new-user-role">
           <option value="viewer">Просмотр</option>
+          <option value="manager">Менеджер</option>
           <option value="admin">Админ</option>
         </select>
         <button type="button" class="btn btn-primary" id="btn-add-user">Добавить</button>
       </div>
       <div id="users-list"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: заказ поставщику -->
+  <div class="modal-overlay" id="modal-order">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <div>
+          <h2 id="order-modal-title">Новый заказ</h2>
+          <p>Поля со звёздочкой обязательны</p>
+        </div>
+        <button class="modal-close" data-close="modal-order">✕</button>
+      </div>
+      <div class="grid2">
+        <div class="field full"><label>Поставщик *</label><input type="text" id="o-supplier" list="o-sup-list" placeholder='ООО "ПРОЭКСПОРТ"'><datalist id="o-sup-list"></datalist></div>
+        <div class="field"><label>Менеджер</label><input type="text" id="o-manager"></div>
+        <div class="field"><label>Статус заказа</label><select id="o-status"><option>Новый</option><option>В процессе</option><option>Отгружен</option><option>Оприходован</option><option>Завершён</option></select></div>
+        <div class="field"><label>Счёт №</label><input type="text" id="o-invoice"></div>
+        <div class="field"><label>Дата счёта / заказа</label><input type="date" id="o-date"></div>
+        <div class="field"><label>Официальная стоимость (безнал) *</label><input type="text" inputmode="decimal" id="o-official" placeholder="2 590 000"></div>
+        <div class="field"><label>Фактическая стоимость *</label><input type="text" inputmode="decimal" id="o-actual" placeholder="5 183 850"></div>
+        <div class="field"><label>Плановая дата отгрузки</label><input type="date" id="o-ship"></div>
+        <div class="field"><label>Срок полной оплаты</label><input type="date" id="o-paydate"></div>
+        <div class="field full"><label>Комментарий</label><input type="text" id="o-comment"></div>
+      </div>
+      <div class="order-calc" id="o-calc"></div>
+      <div class="login-error" id="o-err"></div>
+      <div class="modal-actions order-actions">
+        <button type="button" class="btn btn-danger" id="btn-order-delete">Удалить заказ</button>
+        <button type="button" class="btn btn-primary" id="btn-order-save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: оплата по заказу -->
+  <div class="modal-overlay" id="modal-opay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="opay-title">Оплата</h2>
+          <p id="opay-sub"></p>
+        </div>
+        <button class="modal-close" data-close="modal-opay">✕</button>
+      </div>
+      <div class="order-calc" id="opay-info" style="margin-top:0"></div>
+      <div class="grid2">
+        <div class="field"><label>Вид оплаты</label><select id="opay-type"><option value="bank">Безнал</option><option value="cash">Нал</option></select></div>
+        <div class="field"><label>Дата оплаты</label><input type="date" id="opay-date"></div>
+        <div class="field"><label>Сумма *</label><input type="text" inputmode="decimal" id="opay-amount"></div>
+        <div class="field"><label>Комментарий</label><input type="text" id="opay-note" placeholder="платёжка №, кто передал"></div>
+      </div>
+      <div class="login-error" id="opay-err"></div>
+      <button type="button" class="btn btn-primary btn-block" id="btn-opay-save">Сохранить оплату</button>
     </div>
   </div>
 
@@ -272,5 +393,6 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/orders.js"></script>
 </body>
 </html>
