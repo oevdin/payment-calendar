@@ -166,7 +166,6 @@
         <td class="n">${remCell(r2(a.rb))}</td><td class="n">${remCell(r2(a.rc))}</td><td class="n"><b>${remCell(r2(a.rt))}</b></td></tr>`;
     }).join('') || '<tr><td colspan="7" class="orders-empty">Нет данных</td></tr>';
 
-    $('btn-orders-import').classList.toggle('hidden', !(A().isAdmin() && orders.length === 0));
     $('btn-order-new').classList.toggle('hidden', !canEdit());
   }
 
@@ -288,7 +287,7 @@
     catch (e) { A().toast('Не удалось удалить: ' + A().errText(e), 'err'); }
   }
 
-  // ---------- выгрузка и импорт ----------
+  // ---------- выгрузка в Excel ----------
   function exportCsv() {
     const n = (x) => String(r2(x)).replace('.', ',');
     const head = ['№', 'Поставщик', 'Менеджер', 'Счёт №', 'Дата', 'Официальная стоимость', 'Фактическая стоимость', 'Безнал оплачено', 'Нал оплачено', 'Остаток безнал', 'Остаток нал', 'Итого к оплате', 'Срок оплаты', 'Дата отгрузки', 'Статус заказа', 'Статус оплаты', 'Комментарий'];
@@ -304,41 +303,6 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // старая таблица ООО "ПРОЭКСПОРТ": [офиц, факт, счёт, дата, статус, безнал оплачено, нал оплачено, дата оплаты]
-  const LEGACY = [
-    [2317000, 4496500, '26', '2026-02-12', 'Завершён', 2317000, 2179500, '2026-02-12'],
-    [2382350, 4716300, '29', '2026-02-19', 'Завершён', 2382350, 2350000, '2026-03-21'],
-    [1865400, 3709500, '43', '2026-03-11', 'Завершён', 1865400, 0, '2026-04-10'],
-    [2287600, 4531200, '52', '2026-03-24', 'Завершён', 2287600, 2243600, '2026-04-23'],
-    [2002000, 3884400, '51', '2026-03-23', 'Завершён', 2002000, 1884200, '2026-04-22'],
-    [2115250, 4188150, '74', '2026-04-27', 'Завершён', 2115250, 0, '2026-05-27'],
-    [2320000, 4585000, '91', '2026-05-26', 'Завершён', 2320000, 2265000, '2026-06-25'],
-    [2593650, 4059100, '107', '2026-06-15', 'Завершён', 2593650, 1465450, '2026-07-15'],
-    [2009000, 5170200, '109', '2026-06-15', 'Завершён', 2009000, 3161200, '2026-07-15'],
-    [2528500, 5059600, '129', '2026-07-06', 'Завершён', 2528500, 2481100, '2026-08-05'],
-    [2244000, 4488000, '198', '2026-07-30', 'Завершён', 2244000, 2244000, '2026-08-29'],
-    [1966800, 3977200, '223', '2026-08-10', 'Оприходован', 1966800, 1000000, '2026-09-09'],
-    [2590000, 5183850, '', '', 'В процессе', 1090000, 0, ''],
-  ];
-  async function importLegacy() {
-    if (orders.length && !confirm('В разделе уже есть заказы. Всё равно добавить 13 старых заказов?')) return;
-    if (!orders.length && !confirm('Загрузить 13 заказов ООО "ПРОЭКСПОРТ" из старой таблицы вместе с их оплатами?')) return;
-    const by = A().getUser().displayName || '';
-    const list = LEGACY.map((r, i) => {
-      const pays = [];
-      const pd = r[7] || A().todayStr();
-      if (r[5]) pays.push({ id: uid() + 'b' + i, type: 'bank', amount: r[5], date: pd, note: 'из старой таблицы', by });
-      if (r[6]) pays.push({ id: uid() + 'c' + i, type: 'cash', amount: r[6], date: pd, note: 'из старой таблицы', by });
-      return {
-        num: i + 1, supplier: 'ООО "ПРОЭКСПОРТ"', manager: '', invoice: r[2], date: r[3],
-        official: r[0], actual: r[1], ship: '', payDate: r[7], status: r[4], comment: '',
-        payments: pays, createdAt: new Date().toISOString(), createdBy: by,
-      };
-    });
-    try { await Store.importOrders(list); A().toast('Старые заказы загружены', 'ok'); }
-    catch (e) { A().toast('Не удалось загрузить: ' + A().errText(e), 'err'); }
-  }
-
   // ---------- события (один раз) ----------
   function bindOnce() {
     if (bound) return;
@@ -352,7 +316,6 @@
     $('opay-amount').addEventListener('input', () => { $('opay-err').textContent = ''; });
     $('btn-opay-save').addEventListener('click', savePay);
     $('btn-orders-csv').addEventListener('click', exportCsv);
-    $('btn-orders-import').addEventListener('click', importLegacy);
     ['of-search', 'of-supplier', 'of-status', 'of-pay'].forEach((i) => $(i).addEventListener('input', render));
     $('orders-body').addEventListener('click', (e) => {
       const b = e.target.closest('button');

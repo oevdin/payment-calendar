@@ -177,11 +177,6 @@
   async function removeOrderPayment(id, pay) {
     await db.collection('orders').doc(id).update({ payments: firebase.firestore.FieldValue.arrayRemove(pay) });
   }
-  async function importOrders(list) {
-    const batch = db.batch();
-    list.forEach((o) => batch.set(db.collection('orders').doc(), o));
-    await batch.commit();
-  }
 
   // ---------- writes: settings ----------
   async function saveSettings(patch) {
@@ -221,7 +216,7 @@
     watchContragents, watchPayments, watchSettings, watchUsers,
     addContragent, deleteContragent, renameContragent, seedContragentsIfEmpty,
     addPayment, updatePayment, deletePayment, rolloverBatch,
-    watchOrders, addOrder, updateOrder, deleteOrder, importOrders, addOrderPayment, removeOrderPayment,
+    watchOrders, addOrder, updateOrder, deleteOrder, addOrderPayment, removeOrderPayment,
     saveSettings,
     createUser, setUserRole, revokeUser,
     getTheme, setTheme,
