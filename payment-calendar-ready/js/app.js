@@ -86,6 +86,7 @@
     todayStr: () => todayStr(),
     currency: () => state.settingsDoc.currency || '',
     contragentNames: () => state.contragents.map((c) => c.name),
+    settings: () => state.settingsDoc || {},
   };
 
   function authErrorMessage(err) {

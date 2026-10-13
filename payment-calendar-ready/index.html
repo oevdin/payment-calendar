@@ -184,9 +184,17 @@
               <th class="n">Официальная</th><th class="n">Фактическая</th>
               <th class="n">Безнал оплачено</th><th class="n">Нал оплачено</th>
               <th class="n">Остаток безнал</th><th class="n">Остаток нал</th><th class="n">Итого к оплате</th>
-              <th>Срок оплаты</th><th>Статус</th><th></th>
+              <th>Следующий платёж</th><th>Статус</th><th></th>
             </tr></thead>
             <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+
+        <h2 class="orders-h2">График платежей</h2>
+        <div class="table-wrap">
+          <table class="orders-table orders-table-sm">
+            <thead><tr><th>Срок</th><th>Заказ / поставщик</th><th>Этап</th><th class="n">К оплате</th><th>Статус</th><th></th></tr></thead>
+            <tbody id="orders-plan-body"></tbody>
           </table>
         </div>
 
@@ -307,10 +315,22 @@
         <div class="field"><label>Официальная стоимость (безнал) *</label><input type="text" inputmode="decimal" id="o-official" placeholder="2 590 000"></div>
         <div class="field"><label>Фактическая стоимость *</label><input type="text" inputmode="decimal" id="o-actual" placeholder="5 183 850"></div>
         <div class="field"><label>Плановая дата отгрузки</label><input type="date" id="o-ship"></div>
-        <div class="field"><label>Срок полной оплаты</label><input type="date" id="o-paydate"></div>
+        <div class="field"><label>Фактическая дата отгрузки</label><input type="date" id="o-shipfact"></div>
         <div class="field full"><label>Комментарий</label><input type="text" id="o-comment"></div>
       </div>
       <div class="order-calc" id="o-calc"></div>
+
+      <div class="terms-head">
+        <div class="terms-title">Условия оплаты</div>
+        <select id="o-terms-preset"></select>
+      </div>
+      <div class="terms-hint">Срок этапа считается от даты заказа или от отгрузки (фактической, если указана, иначе плановой). «Остаток» = всё, что не покрыто другими этапами.</div>
+      <div id="o-stages"></div>
+      <div class="terms-foot">
+        <button type="button" class="btn btn-sm" id="btn-stage-add">+ Добавить этап</button>
+        <label class="checkbox-row hidden" id="o-terms-save-wrap"><input type="checkbox" id="o-terms-save"> Запомнить как условия этого поставщика</label>
+      </div>
+      <div class="order-calc" id="o-stages-sum"></div>
       <div class="login-error" id="o-err"></div>
       <div class="modal-actions order-actions">
         <button type="button" class="btn btn-danger" id="btn-order-delete">Удалить заказ</button>
