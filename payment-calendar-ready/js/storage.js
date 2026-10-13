@@ -156,6 +156,33 @@
     await batch.commit();
   }
 
+  // ---------- поставки (заказы поставщикам) ----------
+  function watchOrders(cb, onError) {
+    return db.collection('orders').onSnapshot((qs) => {
+      cb(qs.docs.map((d) => Object.assign({ id: d.id }, d.data())));
+    }, onError);
+  }
+  async function addOrder(data) {
+    await db.collection('orders').add(Object.assign({ createdAt: new Date().toISOString(), payments: [] }, data));
+  }
+  async function updateOrder(id, patch) {
+    await db.collection('orders').doc(id).update(patch);
+  }
+  async function deleteOrder(id) {
+    await db.collection('orders').doc(id).delete();
+  }
+  async function addOrderPayment(id, pay) {
+    await db.collection('orders').doc(id).update({ payments: firebase.firestore.FieldValue.arrayUnion(pay) });
+  }
+  async function removeOrderPayment(id, pay) {
+    await db.collection('orders').doc(id).update({ payments: firebase.firestore.FieldValue.arrayRemove(pay) });
+  }
+  async function importOrders(list) {
+    const batch = db.batch();
+    list.forEach((o) => batch.set(db.collection('orders').doc(), o));
+    await batch.commit();
+  }
+
   // ---------- writes: settings ----------
   async function saveSettings(patch) {
     await db.collection('settings').doc('app').set(patch, { merge: true });
@@ -194,6 +221,7 @@
     watchContragents, watchPayments, watchSettings, watchUsers,
     addContragent, deleteContragent, renameContragent, seedContragentsIfEmpty,
     addPayment, updatePayment, deletePayment, rolloverBatch,
+    watchOrders, addOrder, updateOrder, deleteOrder, importOrders, addOrderPayment, removeOrderPayment,
     saveSettings,
     createUser, setUserRole, revokeUser,
     getTheme, setTheme,
