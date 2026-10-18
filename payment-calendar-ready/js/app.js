@@ -353,6 +353,7 @@
     renderOverdueBanner();
     renderSummary();
     renderTable();
+    if (document.getElementById('modal-cell').classList.contains('open')) renderCellPaymentsList();
   }
 
   function renderOverdueBanner() {
@@ -495,9 +496,11 @@
 
   // ---------- cell modal ----------
   let cellCtx = { contragent: null, date: null, readonly: false };
+  let editingPaymentId = null;
 
   function openCellModal(contragent, date, readonly) {
     cellCtx = { contragent, date, readonly: !!readonly };
+    editingPaymentId = null;
     const d = new Date(date + 'T00:00:00');
     document.getElementById('cell-modal-title').textContent = contragent;
     document.getElementById('cell-modal-sub').textContent = `${pad(d.getDate())} ${MONTHS[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
@@ -516,11 +519,32 @@
     const cur = state.settingsDoc.currency || '';
     if (list.length === 0) { wrap.innerHTML = '<div class="empty-note">Платежей пока нет</div>'; return; }
     wrap.innerHTML = list.map((p) => {
+      if (!cellCtx.readonly && editingPaymentId === p.id) {
+        return `<div class="list-row list-row-stack edit-row" data-edit-id="${p.id}">
+          <div class="field">
+            <label>Сумма</label>
+            <input type="number" class="edit-amount" min="0" step="0.01" value="${p.amount}">
+          </div>
+          <div class="field">
+            <label>Комментарий</label>
+            <input type="text" class="edit-note" value="${esc(p.note || '')}">
+          </div>
+          <div class="field">
+            <label>Дата платежа</label>
+            <input type="date" class="edit-date" value="${p.dueDate}">
+          </div>
+          <div class="row-btns edit-row-btns">
+            <button class="btn btn-sm btn-primary" data-act="save-edit" data-id="${p.id}">Сохранить</button>
+            <button class="btn btn-sm" data-act="cancel-edit">Отмена</button>
+          </div>
+        </div>`;
+      }
       const overdueTag = p.rolled && !p.paid ? ' · перенесено с ' + p.originalDueDate : '';
       const noteLine = p.note ? `<div class="note-line">💬 ${esc(p.note)}</div>` : '';
       const btns = cellCtx.readonly ? '' : `
         <div class="row-btns">
           <button class="check-toggle${p.paid ? ' is-paid' : ''}" data-act="toggle" data-id="${p.id}" title="${p.paid ? 'Отметить неоплаченным' : 'Отметить оплаченным'}">${p.paid ? '✓' : ''}</button>
+          <button class="btn btn-sm" data-act="edit" data-id="${p.id}" title="Редактировать">✎</button>
           <button class="btn btn-sm btn-danger" data-act="delete" data-id="${p.id}">Удалить</button>
         </div>`;
       return `<div class="list-row list-row-stack">
@@ -538,6 +562,9 @@
     if (!cellCtx.readonly) {
       wrap.querySelectorAll('[data-act="toggle"]').forEach((btn) => btn.addEventListener('click', () => togglePaid(btn.getAttribute('data-id'))));
       wrap.querySelectorAll('[data-act="delete"]').forEach((btn) => btn.addEventListener('click', () => deletePaymentRow(btn.getAttribute('data-id'))));
+      wrap.querySelectorAll('[data-act="edit"]').forEach((btn) => btn.addEventListener('click', () => { editingPaymentId = btn.getAttribute('data-id'); renderCellPaymentsList(); }));
+      wrap.querySelectorAll('[data-act="cancel-edit"]').forEach((btn) => btn.addEventListener('click', () => { editingPaymentId = null; renderCellPaymentsList(); }));
+      wrap.querySelectorAll('[data-act="save-edit"]').forEach((btn) => btn.addEventListener('click', () => saveEditPayment(btn.getAttribute('data-id'))));
     }
   }
 
@@ -553,6 +580,24 @@
   async function deletePaymentRow(id) {
     if (!confirm('Удалить этот платёж?')) return;
     try { await Store.deletePayment(id); } catch (e) { toast('Не удалось удалить: ' + authErrorMessage(e), 'err'); }
+  }
+
+  async function saveEditPayment(id) {
+    const row = document.querySelector(`.edit-row[data-edit-id="${id}"]`);
+    if (!row) return;
+    const amount = parseFloat(row.querySelector('.edit-amount').value);
+    if (!amount || amount <= 0) { toast('Укажите сумму больше нуля', 'err'); return; }
+    const note = row.querySelector('.edit-note').value.trim();
+    const dueDate = row.querySelector('.edit-date').value;
+    if (!dueDate) { toast('Укажите дату платежа', 'err'); return; }
+    const p = state.payments.find((x) => x.id === id);
+    const patch = { amount, note, dueDate };
+    if (p && dueDate !== p.dueDate) { patch.rolled = false; patch.originalDueDate = null; }
+    try {
+      await Store.updatePayment(id, patch);
+      editingPaymentId = null;
+      toast('Платёж обновлён', 'ok');
+    } catch (e) { toast('Не удалось сохранить: ' + authErrorMessage(e), 'err'); }
   }
 
   async function addPaymentFromCell() {

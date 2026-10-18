@@ -671,9 +671,13 @@ tfoot td.col-total-cell { color: var(--accent); }
   font-size: 13px;
   letter-spacing: 0.2px;
 }
-.footer-brand img { height: 20px; opacity: 0.95; }
 .footer-brand .made {
-  color: var(--text-muted);
+  color: #83838f;
+}
+.footer-brand .name {
+  font-weight: 700;
+  color: #6e93f3;
+  letter-spacing: 0.2px;
 }
 
 /* ---------- Прочее ---------- */
@@ -1018,3 +1022,12 @@ table.orders-table-sm { min-width: 680px; }
   .stage-row .st-label { grid-column: 1 / 3; }
   .stage-row .stage-del { grid-column: 3; grid-row: 1; }
 }
+
+/* ---------- Редактирование платежа ---------- */
+.edit-row {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 10px 10px 4px;
+}
+.edit-row .field { margin-bottom: 10px; }
+.edit-row-btns { justify-content: flex-end; margin-bottom: 10px; }
