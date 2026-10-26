@@ -429,28 +429,34 @@
         btn.addEventListener('click', async function () {
           btn.disabled = true;
           btn.textContent = 'Собираю данные…';
-          try {
-            const [contragents, payments, users, orders, settings] = await Promise.all([
-              onceFromWatcher(Store.watchContragents),
-              onceFromWatcher(Store.watchPayments),
-              onceFromWatcher(Store.watchUsers),
-              onceFromWatcher(Store.watchOrders),
-              onceFromWatcher(Store.watchSettings),
-            ]);
-            const payload = { contragents, payments, users, orders, settings, exportedAt: new Date().toISOString() };
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'payment-calendar-export.json';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            btn.textContent = 'Готово! Файл скачан';
-          } catch (e) {
-            alert('Не удалось собрать экспорт: ' + (e && e.message ? e.message : e));
+          const names = ['contragents', 'payments', 'users', 'orders', 'settings'];
+          const results = await Promise.allSettled([
+            onceFromWatcher(Store.watchContragents),
+            onceFromWatcher(Store.watchPayments),
+            onceFromWatcher(Store.watchUsers),
+            onceFromWatcher(Store.watchOrders),
+            onceFromWatcher(Store.watchSettings),
+          ]);
+          const payload = { exportedAt: new Date().toISOString() };
+          const problems = [];
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') { payload[names[i]] = r.value; }
+            else { payload[names[i]] = null; problems.push(names[i] + ': ' + (r.reason && (r.reason.code || r.reason.message) || r.reason)); }
+          });
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'payment-calendar-export.json';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          if (problems.length) {
+            alert('Файл скачан, но часть данных не удалось прочитать:\n\n' + problems.join('\n') + '\n\nОтправьте этот текст тоже.');
             btn.textContent = 'Экспорт данных (.json)';
-            btn.disabled = false;
+          } else {
+            btn.textContent = 'Готово! Файл скачан';
           }
+          btn.disabled = false;
         });
       });
     })();
