@@ -103,6 +103,7 @@
         <div class="sidebar-label">Управление</div>
         <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-contragents">Контрагенты</button>
         <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-users">Пользователи</button>
+        <button type="button" class="btn btn-sm btn-block sidebar-btn" id="btn-export-migration">Экспорт данных (.json)</button>
       </div>
 
       <div class="sidebar-spacer"></div>
@@ -412,5 +413,47 @@
   <script src="js/storage.js?v=20261018-3"></script>
   <script src="js/app.js?v=20261018-3"></script>
   <script src="js/orders.js?v=20261018-3"></script>
+  <script>
+    // Временная кнопка одноразового экспорта данных для переноса на
+    // локальный сервер. Безопасно удалить этот блок после переноса.
+    (function () {
+      function onceFromWatcher(watchFn) {
+        return new Promise((resolve, reject) => {
+          let unsub;
+          unsub = watchFn((data) => { if (unsub) unsub(); resolve(data); }, (err) => { if (unsub) unsub(); reject(err); });
+        });
+      }
+      document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btn-export-migration');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+          btn.disabled = true;
+          btn.textContent = 'Собираю данные…';
+          try {
+            const [contragents, payments, users, orders, settings] = await Promise.all([
+              onceFromWatcher(Store.watchContragents),
+              onceFromWatcher(Store.watchPayments),
+              onceFromWatcher(Store.watchUsers),
+              onceFromWatcher(Store.watchOrders),
+              onceFromWatcher(Store.watchSettings),
+            ]);
+            const payload = { contragents, payments, users, orders, settings, exportedAt: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'payment-calendar-export.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            btn.textContent = 'Готово! Файл скачан';
+          } catch (e) {
+            alert('Не удалось собрать экспорт: ' + (e && e.message ? e.message : e));
+            btn.textContent = 'Экспорт данных (.json)';
+            btn.disabled = false;
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
